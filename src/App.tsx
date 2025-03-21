@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { 
   Upload, 
   Button, 
@@ -32,8 +32,8 @@ function App() {
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const [imageUrl, setImageUrl] = useState<string>('');
   const [captionSettings, setCaptionSettings] = useState<CaptionSettings>({
-    height: 40, // 每行文字的高度
-    fontSize: 25,
+    height: 60, // 每行文字的高度
+    fontSize: 45,
     fontColor: '#FFFFFF',
     outlineColor: '#000000',
     fontFamily: 'system-ui',
@@ -44,6 +44,9 @@ function App() {
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [backgroundImage, setBackgroundImage] = useState<HTMLImageElement | null>(null);
+  
+  // 使用防抖定时器引用
+  const debounceTimerRef = useRef<number | null>(null);
 
   // 处理文件上传
   const handleFileChange = (info: any) => {
@@ -72,16 +75,34 @@ function App() {
     }
   };
 
-  // 处理设置变更
-  const handleSettingChange = (key: keyof CaptionSettings, value: any) => {
+  // 处理设置变更 - 使用防抖优化
+  const handleSettingChange = useCallback((key: keyof CaptionSettings, value: any) => {
     setCaptionSettings(prev => ({
       ...prev,
       [key]: value
     }));
-  };
+  }, []);
+
+  // 防抖处理文本输入
+  const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newText = e.target.value;
+    
+    // 清除之前的定时器
+    if (debounceTimerRef.current !== null) {
+      window.clearTimeout(debounceTimerRef.current);
+    }
+    
+    // 设置新的定时器
+    debounceTimerRef.current = window.setTimeout(() => {
+      setCaptionSettings(prev => ({
+        ...prev,
+        text: newText
+      }));
+    }, 300); // 300ms的防抖延迟
+  }, []);
 
   // 生成字幕图片
-  const generateCaptionImage = () => {
+  const generateCaptionImage = useCallback(() => {
     if (!imageUrl || !canvasRef.current || !backgroundImage) {
       return;
     }
@@ -167,65 +188,65 @@ function App() {
       ctx.fillText(line, backgroundImage.width / 2, textY);
     });
     
-    // 更新预览URL
-    setPreviewUrl(canvas.toDataURL('image/png'));
-  };
-
-  // 当图片或设置变更时，自动生成预览
-  useEffect(() => {
-    if (imageUrl && backgroundImage) {
-      generateCaptionImage();
-    }
+    // 更新预览URL - 使用较低质量以提高性能
+    setPreviewUrl(canvas.toDataURL('image/jpeg', 0.85));
   }, [imageUrl, captionSettings, backgroundImage]);
 
-  // 保存图片
-  const saveImage = () => {
-    if (!previewUrl) {
+  // 使用requestAnimationFrame优化渲染
+  useEffect(() => {
+    if (imageUrl && backgroundImage) {
+      // 使用requestAnimationFrame来优化渲染
+      const animationId = requestAnimationFrame(() => {
+        generateCaptionImage();
+      });
+      
+      return () => {
+        // 清理
+        cancelAnimationFrame(animationId);
+      };
+    }
+  }, [imageUrl, captionSettings, backgroundImage, generateCaptionImage]);
+
+  // 保存图片 - 使用高质量输出
+  const saveImage = useCallback(() => {
+    if (!previewUrl || !canvasRef.current || !backgroundImage) {
       message.error('请先生成字幕图片');
       return;
     }
     
+    // 保存时重新生成高质量图片
+    const canvas = canvasRef.current;
+    const highQualityImage = canvas.toDataURL('image/png');
+    
     // 使用file-saver库保存图片
-    saveAs(previewUrl, 'caption-image.png');
-  };
+    saveAs(highQualityImage, 'caption-image.png');
+  }, [previewUrl, backgroundImage]);
 
-  // 自定义上传组件
-  const customUpload = ({ file, onSuccess }: any) => {
-    console.log(file);
-    setTimeout(() => {
-      onSuccess("ok");
-    }, 0);
-  };
-
-  // 计算图片预览的样式
-  const getImagePreviewStyle = () => {
+  // 计算图片预览的样式 - 使用useMemo优化计算
+  const imagePreviewStyle = useMemo(() => {
     if (!imageSize.width || !imageSize.height) {
       return {
         maxWidth: '100%',
-        maxHeight: '100%',
+        maxHeight: 'none',
         objectFit: 'contain' as const
       };
     }
 
-    const containerRatio = 500 / 500; // 预览容器的宽高比
-    const imageRatio = imageSize.width / imageSize.height;
-    
-    if (imageRatio > containerRatio) {
-      // 图片更宽，以宽度为基准
-      return {
-        width: '100%',
-        height: 'auto',
-        objectFit: 'contain' as const
-      };
-    } else {
-      // 图片更高，以高度为基准
-      return {
-        width: 'auto',
-        height: '100%',
-        objectFit: 'contain' as const
-      };
-    }
-  };
+    // 保持原始图片尺寸，不进行缩放
+    return {
+      maxWidth: '100%',
+      width: 'auto',
+      height: 'auto',
+      objectFit: 'contain' as const
+    };
+  }, [imageSize]);
+
+  // 自定义上传组件
+  const customUpload = useCallback(({ file: _, onSuccess }: any) => {
+    setTimeout(() => {
+      onSuccess("ok");
+    }, 0);
+  }, []);
 
   return (
     <div className="app-container">
@@ -233,22 +254,20 @@ function App() {
         <div className="app-logo">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect width="24" height="24" rx="3" fill="#1890ff" opacity="0.1"/>
-            <path d="M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3ZM21 19H3V5H21V19Z" fill="#1890ff"/>
-            <path d="M8.5 13.5L11 16.51L14.5 12L19 18H5L8.5 13.5Z" fill="#1890ff"/>
+            <path d="M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3ZM21 19H3V5H21V19ZM13.96 12.29L11.21 15.83L9.25 13.47L6.5 17H17.5L13.96 12.29Z" fill="#1890ff"/>
             <rect x="4" y="20" width="16" height="2" rx="1" fill="#1890ff"/>
           </svg>
           <span className="app-logo-text">图片字幕工具</span>
         </div>
-        
-        <Row gutter={[32, 32]} className="mb-6">
+        <Row gutter={[24, 24]}>
           <Col xs={24} lg={12}>
-            <div className="app-card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <div className="app-card" style={{ height: 'auto' }}>
               <div className="ant-card-head">
                 <div className="ant-card-head-wrapper">
-                  <div className="ant-card-head-title">编辑区域</div>
+                  <div className="ant-card-head-title">字幕设置</div>
                 </div>
               </div>
-              <div className="ant-card-body" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div className="ant-card-body" style={{ display: 'flex', flexDirection: 'column' }}>
                 <div className="form-section">
                   <div className="form-label">上传图片</div>
                   <Upload
@@ -342,11 +361,11 @@ function App() {
                   </div>
                 </div>
 
-                <div className="form-section" style={{ flex: 1 }}>
+                <div className="form-section">
                   <div className="form-label">字幕内容</div>
                   <TextArea
-                    value={captionSettings.text}
-                    onChange={(e) => handleSettingChange('text', e.target.value)}
+                    defaultValue={captionSettings.text}
+                    onChange={handleTextChange}
                     placeholder="输入字幕内容，每行将单独显示在图片上"
                     autoSize={{ minRows: 3, maxRows: 6 }}
                     className="caption-textarea"
@@ -377,7 +396,7 @@ function App() {
                   <div className="ant-card-head-title">预览区域</div>
                 </div>
               </div>
-              <div className="ant-card-body" style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column' }}>
+              <div className="ant-card-body" style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
                 <div className="preview-container fade-in">
                   {imageUrl ? (
                     previewUrl ? (
@@ -385,7 +404,7 @@ function App() {
                         <img 
                           src={previewUrl} 
                           alt="预览" 
-                          style={getImagePreviewStyle()}
+                          style={imagePreviewStyle}
                           className="fade-in"
                         />
                       </div>

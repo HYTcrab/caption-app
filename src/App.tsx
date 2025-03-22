@@ -252,15 +252,15 @@ function App() {
     <div className="app-container">
       <div className="content-container">
         <div className="app-logo">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect width="24" height="24" rx="3" fill="#1890ff" opacity="0.1"/>
             <path d="M21 3H3C1.9 3 1 3.9 1 5V19C1 20.1 1.9 21 3 21H21C22.1 21 23 20.1 23 19V5C23 3.9 22.1 3 21 3ZM21 19H3V5H21V19ZM13.96 12.29L11.21 15.83L9.25 13.47L6.5 17H17.5L13.96 12.29Z" fill="#1890ff"/>
             <rect x="4" y="20" width="16" height="2" rx="1" fill="#1890ff"/>
           </svg>
           <span className="app-logo-text">图片字幕工具</span>
         </div>
-        <Row gutter={[24, 24]}>
-          <Col xs={24} lg={12}>
+        <Row gutter={[8, 16]}>
+          <Col xs={24} sm={24} md={24} lg={12}>
             <div className="app-card" style={{ height: 'auto' }}>
               <div className="ant-card-head">
                 <div className="ant-card-head-wrapper">
@@ -279,7 +279,7 @@ function App() {
                     listType="picture"
                     className="upload-container"
                   >
-                    <Button icon={<UploadOutlined />} size="large" className="primary-button" style={{ width: '100%' }}>
+                    <Button icon={<UploadOutlined />} className="primary-button" style={{ width: '100%' }}>
                       选择图片
                     </Button>
                   </Upload>
@@ -367,7 +367,7 @@ function App() {
                     defaultValue={captionSettings.text}
                     onChange={handleTextChange}
                     placeholder="输入字幕内容，每行将单独显示在图片上"
-                    autoSize={{ minRows: 3, maxRows: 6 }}
+                    autoSize={{ minRows: 2, maxRows: 6 }}
                     className="caption-textarea"
                   />
                 </div>
@@ -378,7 +378,6 @@ function App() {
                     icon={<SaveOutlined />}
                     style={{ width: '100%' }}
                     disabled={!previewUrl}
-                    size="large"
                     type="primary"
                     className="primary-button"
                   >
@@ -389,14 +388,14 @@ function App() {
             </div>
           </Col>
 
-          <Col xs={24} lg={12}>
+          <Col xs={24} sm={24} md={24} lg={12}>
             <div className="app-card" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
               <div className="ant-card-head">
                 <div className="ant-card-head-wrapper">
                   <div className="ant-card-head-title">预览区域</div>
                 </div>
               </div>
-              <div className="ant-card-body" style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
+              <div className="ant-card-body" style={{ flex: 1, padding: '12px', display: 'flex', flexDirection: 'column', overflow: 'auto' }}>
                 <div className="preview-container fade-in">
                   {imageUrl ? (
                     previewUrl ? (
@@ -415,8 +414,8 @@ function App() {
                     )
                   ) : (
                     <div className="preview-placeholder">
-                      <div style={{ marginBottom: '16px' }}>
-                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <div style={{ marginBottom: '12px' }}>
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3ZM19 19H5V5H19V19ZM13.96 12.29L11.21 15.83L9.25 13.47L6.5 17H17.5L13.96 12.29Z" fill="#8c8c8c"/>
                         </svg>
                       </div>
